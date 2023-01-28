@@ -144,6 +144,12 @@ class Prover:
         # Note the convenience function:
         #       self.rlc(val1, val2) = val_1 + self.beta * val_2 + gamma
 
+        roots_of_unity = Scalar.roots_of_unity(group_order)
+        Z_values = [None] * (group_order + 1)
+        Z_values[0] = Scalar(1)
+        for i in range(group_order):
+            Z_values[i+1] = Z_values[i] * (self.rlc(self.A.values[i], roots_of_unity[i]) * self.rlc(self.B.values[i], 2 * roots_of_unity[i]) * self.rlc(self.C.values[i], 3 * roots_of_unity[i])) / (self.rlc(self.A.values[i], self.pk.S1.values[i]) * self.rlc(self.B.values[i], self.pk.S2.values[i]) * self.rlc(self.C.values[i], self.pk.S3.values[i]))
+
         # Check that the last term Z_n = 1
         assert Z_values.pop() == 1
 
@@ -163,6 +169,8 @@ class Prover:
 
         # Construct Z, Lagrange interpolation polynomial for Z_values
         # Cpmpute z_1 commitment to Z polynomial
+
+        z_1 = setup.commit(Polynomial(Z_values, Basis.LAGRANGE))
 
         # Return z_1
         return Message2(z_1)

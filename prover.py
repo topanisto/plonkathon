@@ -168,7 +168,10 @@ class Prover:
             ] == 0
 
         # Construct Z, Lagrange interpolation polynomial for Z_values
-        # Cpmpute z_1 commitment to Z polynomial
+        Z = Polynomial(Z_values, Basis.LAGRANGE)
+        self.Z = Z
+
+        # Compute z_1 commitment to Z polynomial
 
         z_1 = setup.commit(Polynomial(Z_values, Basis.LAGRANGE))
 
@@ -184,25 +187,52 @@ class Prover:
         # List of roots of unity at 4x fineness, i.e. the powers of µ
         # where µ^(4n) = 1
 
+        fine_rou = Scalar.roots_of_unity(4 * group_order)
+        X = Polynomial(fine_rou, Basis.LAGRANGE)
+
         # Using self.fft_expand, move A, B, C into coset extended Lagrange basis
 
+        A_big = self.fft_expand(self.A)
+        B_big = self.fft_expand(self.B)
+        C_big = self.fft_expand(self.C)
+
         # Expand public inputs polynomial PI into coset extended Lagrange
+
+        PI_big = self.fft_expand(self.PI)
 
         # Expand selector polynomials pk.QL, pk.QR, pk.QM, pk.QO, pk.QC
         # into the coset extended Lagrange basis
 
+        QL_big = self.fft_expand(self.pk.QL)
+        QR_big = self.fft_expand(self.pk.QR)
+        QM_big = self.fft_expand(self.pk.QM)
+        QO_big = self.fft_expand(self.pk.QO)
+        QC_big = self.fft_expand(self.pk.QC)
+
         # Expand permutation grand product polynomial Z into coset extended
         # Lagrange basis
 
+        Z_big = self.fft_expand(self.Z)
+
         # Expand shifted Z(ω) into coset extended Lagrange basis
+
+        Z_shift_big = self.fft_expand(self.Z.shift(1))
 
         # Expand permutation polynomials pk.S1, pk.S2, pk.S3 into coset
         # extended Lagrange basis
 
+        S1_big = self.fft_expand(self.pk.S1)
+        S2_big = self.fft_expand(self.pk.S2)
+        S3_big = self.fft_expand(self.pk.S3)
+
         # Compute Z_H = X^N - 1, also in evaluation form in the coset
+
+        Z_H_big = self.fft_expand(Polynomial([Scalar(-1)] + [Scalar(0)] * (group_order-2) + [Scalar(1)], Basis.MONOMIAL).fft())
 
         # Compute L0, the Lagrange basis polynomial that evaluates to 1 at x = 1 = ω^0
         # and 0 at other roots of unity
+
+        L0 = Polynomial([Scalar(1)] + [Scalar(0)] * (group_order - 1), Basis.LAGRANGE)
 
         # Expand L0 into the coset extended Lagrange basis
         L0_big = self.fft_expand(
@@ -225,6 +255,7 @@ class Prover:
         #    (Z - 1) * L0 = 0
         #    L0 = Lagrange polynomial, equal at all roots of unity except 1
 
+        QUOT_big = (A_big * QL_big + B_big * QR_big + A_big * B_big * QM_big + C_big * QO_big + PI_big + QC_big) / Z_H_big + (Z_shift_big - Z_big * (self.rlc(A_big, X) * self.rlc(B_big, X+X) * self.rlc(C_big, X+X+X)) / (self.rlc(A_big, S1_big) * self.rlc(B_big, S2_big) * self.rlc(C_big, S3_big))) / Z_H_big + (Z_big * L0_big - L0_big) / Z_H_big
         # Sanity check: QUOT has degree < 3n
         assert (
             self.expanded_evals_to_coeffs(QUOT_big).values[-group_order:]

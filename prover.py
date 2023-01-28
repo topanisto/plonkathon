@@ -99,10 +99,26 @@ class Prover:
         # - B_values: witness[program.wires()[i].R]
         # - C_values: witness[program.wires()[i].O]
 
+        num_constraints = len(program.constraints)
+        A_values = [Scalar(witness[program.wires()[i].L]) for i in range(num_constraints)] + [Scalar(0)] * (group_order - num_constraints)
+        B_values = [Scalar(witness[program.wires()[i].R]) for i in range(num_constraints)] + [Scalar(0)] * (group_order - num_constraints)
+        C_values = [Scalar(witness[program.wires()[i].O]) for i in range(num_constraints)] + [Scalar(0)] * (group_order - num_constraints)
+
         # Construct A, B, C Lagrange interpolation polynomials for
         # A_values, B_values, C_values
 
+        A = Polynomial(A_values, Basis.LAGRANGE)
+        B = Polynomial(B_values, Basis.LAGRANGE)
+        C = Polynomial(C_values, Basis.LAGRANGE)
+        self.A = A
+        self.B = B
+        self.C = C
+
         # Compute a_1, b_1, c_1 commitments to A, B, C polynomials
+
+        a_1 = setup.commit(A)
+        b_1 = setup.commit(B)
+        c_1 = setup.commit(C)
 
         # Sanity check that witness fulfils gate constraints
         assert (
